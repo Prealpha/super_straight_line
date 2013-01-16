@@ -1,4 +1,10 @@
+int hit_count = 0;
+
 int X, Y;
+int playerW=40;
+int playerH=40;
+int boardW = 400;
+int boardH = 600;
 float xSpeed;
 float xAcc = 2.5;
 //color color_normal;
@@ -15,13 +21,150 @@ boolean dir_right;
 int dir;
 int t;
 ArrayList blocks;
-class Block {
+
+class Block 
+{
   int y;
+  int x;
+  int w;
+  int h;
   float xSpeed;
   int type;
-  Block(){
+  /*
+   * Constructor
+   */
+  Block()
+  {
     y = 0;
-    type = int(random(10));
+    x = 0;
+    //type = int(random(10));
+    type = 0;
+    switch(type){
+      case 0:
+        y = -y + int(random(-5,5));
+        x = int(random(boardW));
+        w = 100;
+        h = 40;
+    }
+  }
+  void update()
+  {
+    switch(type)
+    {
+      case 0:
+        break;
+      case 1:
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+      case 4:
+        break;
+      case 5:
+        break;
+      case 6:
+        break;
+      case 7:
+        break;
+      case 8:
+        break;
+      case 9:
+        break;
+    }
+  }
+  void draw()
+  {
+    // rect(3,blocks.get(i).y,394,40);
+    switch(type)
+    {
+      case 0:
+        rect(x,y,w,h);
+        if( w+x > boardW)
+          {
+            rect(x-boardW,y,w,h);
+          }
+        break;
+      case 1:
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+      case 4:
+        break;
+      case 5:
+        break;
+      case 6:
+        break;
+      case 7:
+        break;
+      case 8:
+        break;
+      case 9:
+        break;
+    }
+  }
+  boolean check(){
+    boolean ret;
+    switch(type)
+    {
+      case 0:
+        //in the same vertical area
+        if( y+h > 500 && y < 500+playerH )
+        {
+          // operator precedence ... http://introcs.cs.princeton.edu/java/11precedence/
+           if( x < X+playerW/2 && x+w > X-playerW/2)
+            {
+              ret = true;
+            }
+            //player 'overflowing' to the left
+            if( X-playerW/2 < 0)
+            {
+              if(x < boardW+X+playerW/2 && x+w > boardW+X-playerW/2)
+              {
+                ret = true;
+              }
+            }
+            //player 'overflowing' to the right
+            else if (X+playerW/2 > boardW)
+            {
+              if( x < X-boardW+playerW/2 && x+w > X-boardW-playerW/2)
+              {
+                ret = true;
+              }
+            }
+            if( w+x > boardW)
+            {
+              if( x-boardW < X+playerW/2 && x+w-boardW > X-playerW/2)
+              {
+                ret = true;
+              }
+            }
+        }
+        //block cut
+        break;
+      case 1:
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+      case 4:
+        break;
+      case 5:
+        break;
+      case 6:
+        break;
+      case 7:
+        break;
+      case 8:
+        break;
+      case 9:
+        break;
+    }
+    if (ret && debug) println("Hit "+hit_count++);
+    return ret;
   }
 }
 
@@ -44,34 +187,23 @@ void setup()
   blocks.add(new Block());
 }
 
-void draw(){
-  if(focused){
-  boolean moving = false;
-  /*if(keyPressed){
-    if(key == 'a' || ( key == CODED && keyCode == LEFT)){
-      moving = true;
-      if(xSpeed > 0)
+void draw()
+{
+  if(focused)
+  {
+    t = t + 1
+      if (t >= 250)
       {
-        xSpeed -= 2*xAcc;
+        t = 0;
+        block_ySpeed++;
       }
-      else if(xSpeed > (-1*MAX_XSPEED))
-      {
-        xSpeed -= xAcc;
-      }
-    }else if(key =='d' || ( key == CODED && keyCode == RIGHT)){
-      moving = true;
-      if(xSpeed < 0)
-      {
-        xSpeed += 2*xAcc;
-      }
-      else if(xSpeed < MAX_XSPEED)
-      {
-        xSpeed += xAcc;
-      }
+    if(t == 75 && blocks.size()<4)
+    {
+      blocks.add(0,new Block());
     }
-  }
-  */
-    if(dir_left){
+    boolean moving = false;
+    if(dir_left)
+    {
       if(!dir_right) //both keys = block
       {
         moving = true;
@@ -95,62 +227,62 @@ void draw(){
         xSpeed += xAcc;
       }
     }
-  if (!moving)
-  {
-    if(xSpeed > 0)
+    if (!moving)
     {
-      xSpeed -= xAcc;
+      if(xSpeed > 0)
+      {
+        xSpeed -= xAcc;
+      }
+      else if(xSpeed < 0)
+      {
+        xSpeed += xAcc;
+      }
     }
-    else if(xSpeed < 0)
+    X +=xSpeed;
+    if(X>400)
     {
-      xSpeed += xAcc;
+      X = 0;
+    }else if(X<0) {
+      X=400;
     }
-  }
-  X +=xSpeed;
-  if(X>400)
-  {
-    X = 0;
-  }else if(X<0)
-  {
-    X=400;
-  }
-	background(0);
-  if(check())
-  {
-	  fill(color_hurt);
-    //triangle_color = color_normal;
-  }else{
-    //triangle_color = color_hurt;
-	  fill(color_normal);
-  }
-	stroke(255);
-	triangle(X-20,Y+40,X,Y,X+20,Y+40);
-  if(X>380)
-  {
-    int n = X-400;
-	  triangle(n-20,Y+40,n,Y,n+20,Y+40);
-  }else if (X<20)
-  {
-    int n = X+400;
-	  triangle(n-20,Y+40,n,Y,n+20,Y+40);
-  }
-  fill(255);
-  for(i=0; i< blocks.size(); i++){
-    Block b = blocks.get(i);
-    b.y += block_ySpeed;
-    if(b.y > 600){
-      blocks.remove(i);
-      blocks.add(0,new Block());
+    background(0);
+    if(blocks.get(blocks.size()-1).check())
+    {
+      fill(color_hurt);
+      //triangle_color = color_normal;
     }else{
-      rect(3,blocks.get(i).y,394,40);
+      //triangle_color = color_hurt;
+      fill(color_normal);
     }
-  }
-  if(debug)
-  {
-    text(X+","+Y,300,40);
-    text(xSpeed,300,60);
-    text(frameRate,10,20);
-  }
+    stroke(255);
+    triangle(X-20,Y+40,X,Y,X+20,Y+40);
+    if(X>380)
+    {
+      int n = X-400;
+      triangle(n-20,Y+40,n,Y,n+20,Y+40);
+    }else if (X<20)
+    {
+      int n = X+400;
+      triangle(n-20,Y+40,n,Y,n+20,Y+40);
+    }
+    fill(255);
+    for(i=0; i< blocks.size(); i++){
+      Block b = blocks.get(i);
+      b.update();
+      b.y += block_ySpeed;
+      if(b.y > 600){
+        blocks.remove(i);
+        blocks.add(0,new Block());
+      }else{
+        b.draw();
+      }
+    }
+    if(debug)
+    {
+      text(X+","+Y,300,40);
+      text(xSpeed,300,60);
+      text(frameRate,10,20);
+    }
   }else{
     text("Paused", 150,290);
   }
