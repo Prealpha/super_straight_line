@@ -3,24 +3,29 @@ int hit_count = 0;
 int X, Y;
 int playerW=40;
 int playerH=40;
-int boardW = 400;
-int boardH = 600;
 float xSpeed;
 float xAcc = 2.5;
-//color color_normal;
-//color color_hurt;
+float MAX_XSPEED = 10;
+
+boolean dir_left;
+boolean dir_right;
+int dir; //current direction
+
 color color_normal = color(200,200,200);
 color color_hurt = color(120,0,0);
 color triangle_color;
-float MAX_XSPEED = 10;
+
+int boardW = 400;
+int boardH = 600;
+
 boolean debug = true;
-float block_y;
+
 float block_ySpeed;
-boolean dir_left;
-boolean dir_right;
-int dir;
-int t;
-ArrayList blocks;
+ArrayList blocks; //blocks on the screen
+
+int t; //time
+int tNext; //ticks until next pattern
+int fRate = 25;
 
 class Block 
 {
@@ -41,11 +46,20 @@ class Block
     type = 0;
     switch(type){
       case 0:
-        y = -y + int(random(-5,5));
-        x = int(random(boardW));
+        x = 8*int(random(boardW/8));
         w = 100;
         h = 40;
+        y = -h + int(random(-5,5));
     }
+  }
+  Block(x0,y0,w0,h0,xSpeed0)
+  {
+    x = x0;
+    y = y0;
+    w = w0;
+    h = h0;
+    xSpeed = xSpeed0;
+    type = 0;
   }
   void update()
   {
@@ -168,10 +182,80 @@ class Block
   }
 }
 
+int newPattern(int difficulty)
+{
+  int time;
+  //switch(int(random(0)))
+  switch(int(random(6)))
+  {
+    case 0:// single block
+      blocks.add(new Block());
+      time = 1.5*fRate;
+      break;
+    case 1:// |- - - - |
+      int w0 = int(boardW/8);
+      int x0 = random(1)>0.5 ? 0:int(w0);
+      int y0 = -40 + int (random(-5,5));
+      for ( int i = 0;i < 4; i++)
+      {
+        blocks.add(new Block(x0+int(2*i*w0),y0,int(w0),40,0));
+      }
+      time = 1.5*fRate;
+      break;
+    case 2:// | -------|
+      int w0 = 7*int(boardW/8);
+      int side = int(boardW/8);
+      int x0 = side*int(random(8));
+      int y0 = -40 + int (random(-5,5));
+      blocks.add(new Block(x0,y0,w0,40,0));
+      time = 1.5*fRate;
+      break;
+    case 3:// |--  --  |
+      int w0 = int(boardW/4);
+      int x0 = random(1)>0.5 ? 0: w0;
+      int y0 = -40 + int (random(-5,5));
+      for ( int i = 0;i < 2; i++)
+      {
+        blocks.add(new Block(x0+int(2*i*w0),y0,int(w0),40,0));
+      }
+      time = 1.5*fRate;
+      break;
+    case 4:
+      int w0 = int(boardW/8);
+      int x0 = w0 * random(8);
+      int y0 = -40 + int(random(-5,5));
+      boolean go_left = random(1)>0.5;
+      for ( int i = 0; i< 5; i++)
+      {
+        if(go_left)
+        {
+          blocks.add(new Block(x0 - i*w0, y0 - 60*i,6*w0,i<4?(40-i*10):1,0) );
+        }else{
+          blocks.add(new Block(x0 + i*w0, y0 - 60*i,6*w0,i<4?(40-i*10):1,0) );
+        }
+      }
+      time = 5*fRate;
+      break;
+    case 5:
+      int w0 = int(boardW/4);
+      int x0 = random(1)>0.5 ? 0 : w0;
+      int y0 = -40 + int(random(-5,5));
+      for ( int i = 0; i< 4; i++)
+      {
+        blocks.add(new Block((x0+i*w0)%boardW, y0 - 80*i,w0,30,0) );
+        blocks.add(new Block((x0+(2+i)*w0)%boardW, y0 - 80*i,w0,30,0) );
+      }
+      time = 5*fRate;
+      break;
+
+  }
+  return time;
+}
+
 void setup()
 {
 	size(400,600);
-	frameRate(25);
+	frameRate(fRate);
 	strokeWeight(1);
 	PFont fontA = loadFont("courier");
 	textFont(fontA, 18);
@@ -181,10 +265,8 @@ void setup()
 	fill(255);
   //color = 255;
   xSpeed = 0;
-  block_y = 0;
   block_ySpeed = 4;
   blocks = new ArrayList();
-  blocks.add(new Block());
 }
 
 void draw()
@@ -192,14 +274,14 @@ void draw()
   if(focused)
   {
     t = t + 1
-      if (t >= 250)
+      if (t >= fRate*10)
       {
         t = 0;
         block_ySpeed++;
       }
-    if(t == 75 && blocks.size()<4)
+    if(tNext-- <= 0)
     {
-      blocks.add(0,new Block());
+      tNext = newPattern(0);
     }
     boolean moving = false;
     if(dir_left)
@@ -246,6 +328,7 @@ void draw()
       X=400;
     }
     background(0);
+    /*
     if(blocks.get(blocks.size()-1).check())
     {
       fill(color_hurt);
@@ -256,6 +339,7 @@ void draw()
     }
     stroke(255);
     triangle(X-20,Y+40,X,Y,X+20,Y+40);
+
     if(X>380)
     {
       int n = X-400;
@@ -265,18 +349,38 @@ void draw()
       int n = X+400;
       triangle(n-20,Y+40,n,Y,n+20,Y+40);
     }
+    */
+    boolean hurt;
     fill(255);
-    for(i=0; i< blocks.size(); i++){
+    stroke(255);
+    ArrayList blocks_gone = new ArrayList();
+    for(int i = 0; i < blocks.size(); i++){
       Block b = blocks.get(i);
-      b.update();
+      //b.update();
       b.y += block_ySpeed;
-      if(b.y > 600){
-        blocks.remove(i);
-        blocks.add(0,new Block());
+      if(b.y > boardH){
+        blocks_gone.add(i);
       }else{
         b.draw();
+        hurt = hurt || b.check();
       }
     }
+    //remove the blocks that have left the screen
+    for (int i=blocks_gone.size()-1; i>=0; i--){
+      blocks.remove(blocks_gone.get(i));
+    }
+    fill(hurt?color_hurt:normal);
+    triangle(X-20,Y+40,X,Y,X+20,Y+40);
+    if(X>380)
+    {
+      int n = X-400;
+      triangle(n-20,Y+40,n,Y,n+20,Y+40);
+    }else if (X<20)
+    {
+      int n = X+400;
+      triangle(n-20,Y+40,n,Y,n+20,Y+40);
+    }
+
     if(debug)
     {
       text(X+","+Y,300,40);
