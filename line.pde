@@ -26,6 +26,13 @@ ArrayList blocks; //blocks on the screen
 int t; //time
 int tNext; //ticks until next pattern
 int fRate = 25;
+int lastX; // last exit from a pattern (to line up the next)
+int difficulty;
+
+float pulse;
+boolean pulseUp; //increasing or decreasing
+
+int off;
 
 class Block 
 {
@@ -50,6 +57,7 @@ class Block
         w = 100;
         h = 40;
         y = -h + int(random(-5,5));
+        lastX = x;
     }
   }
   Block(x0,y0,w0,h0,xSpeed0)
@@ -63,29 +71,7 @@ class Block
   }
   void update()
   {
-    switch(type)
-    {
-      case 0:
-        break;
-      case 1:
-        break;
-      case 2:
-        break;
-      case 3:
-        break;
-      case 4:
-        break;
-      case 5:
-        break;
-      case 6:
-        break;
-      case 7:
-        break;
-      case 8:
-        break;
-      case 9:
-        break;
-    }
+    x += (xSpeed*pulse)%boardW;
   }
   void draw()
   {
@@ -93,91 +79,82 @@ class Block
     switch(type)
     {
       case 0:
-        rect(x,y,w,h);
+        float pulse2 = (pulse+10)/11;
+        rect(x+w*(1-pulse2)/2,y+h*(1-pulse2)/2,w*pulse2,h*pulse2);
         if( w+x > boardW)
-          {
-            rect(x-boardW,y,w,h);
-          }
-        break;
-      case 1:
-        break;
-      case 2:
-        break;
-      case 3:
-        break;
-      case 4:
-        break;
-      case 5:
-        break;
-      case 6:
-        break;
-      case 7:
-        break;
-      case 8:
-        break;
-      case 9:
+        {
+          rect(x-boardW,y,w,h);
+        }
         break;
     }
   }
-  boolean check(){
-    boolean ret;
+  /*
+   * Check for collisions with the player
+   * 0 top (death)
+   * <0 left
+   * >0 right
+   */
+  boolean check()
+  {
+    boolean ret = false;
     switch(type)
     {
       case 0:
         //in the same vertical area
-        if( y+h > 500 && y < 500+playerH )
-        {
-          // operator precedence ... http://introcs.cs.princeton.edu/java/11precedence/
-           if( x < X+playerW/2 && x+w > X-playerW/2)
-            {
-              ret = true;
-            }
-            //player 'overflowing' to the left
-            if( X-playerW/2 < 0)
-            {
-              if(x < boardW+X+playerW/2 && x+w > boardW+X-playerW/2)
-              {
-                ret = true;
+        if( y+h > 500 && y < 500+playerH ) {
+          // operator precedence... http://introcs.cs.princeton.edu/java/11precedence/
+           if( x < X+playerW/2 && x+w > X-playerW/2) {
+             if (x + w - X + playerW/2 < 10) {//              [] /\
+               if (debug) println("Hey, Listen!");
+               ret = true;
+               off = -(x + w - X + playerW/2); 
+             } else if (X + playerW/2 - x < 10) {//             /\ []
+               if (debug) println("Hey, Look!");
+               ret = true;
+               off = X + playerW/2 - x;
+             } else {
+               ret = true;
+             }
+           }
+            //player overflowing to the left
+            if( X-playerW/2 < 0) {
+              if(x < boardW+X+playerW/2 && x+w > boardW+X-playerW/2) {
+                if (x + w - boardW - X + playerW/2 < 10) {//      |\      [] /|
+                  ret = true;
+                  off = -(x + w - boardW - X + playerW/2);
+                } else {
+                  ret = true;
+                }
               }
-            }
-            //player 'overflowing' to the right
-            else if (X+playerW/2 > boardW)
-            {
+            //player overflowing to the right
+            } else if (X+playerW/2 > boardW) {
               if( x < X-boardW+playerW/2 && x+w > X-boardW-playerW/2)
               {
-                ret = true;
+                if (X + playerW/2 -boardW - x < 10) {//    |\ []         /|
+                  ret = true;
+                  off = X + playerW/2 - boardW - x;
+                } else {
+                  ret = true;
+                }
               }
             }
+            //block cut
             if( w+x > boardW)
             {
               if( x-boardW < X+playerW/2 && x+w-boardW > X-playerW/2)
               {
-                ret = true;
+                if (x + w- boardW - X + playerW/2 < 10) {//     |  ] /\     [ |
+                  ret = true;
+                  off = -(x + w- boardW - X + playerW/2);
+                } else {
+                  ret = true;
+                }
               }
             }
         }
-        //block cut
-        break;
-      case 1:
-        break;
-      case 2:
-        break;
-      case 3:
-        break;
-      case 4:
-        break;
-      case 5:
-        break;
-      case 6:
-        break;
-      case 7:
-        break;
-      case 8:
-        break;
-      case 9:
         break;
     }
-    if (ret && debug) println("Hit "+hit_count++);
+    //if (ret && debug) println("Hit "+hit_count++);
     return ret;
   }
 }
@@ -185,8 +162,10 @@ class Block
 int newPattern(int difficulty)
 {
   int time;
-  //switch(int(random(0)))
-  switch(int(random(6)))
+  //switch(6)
+  int xSpeed = int(difficulty/4);
+  if (random(1)>0.5) xSpeed = -xSpeed;
+  switch(int(random(7)))
   {
     case 0:// single block
       blocks.add(new Block());
@@ -198,17 +177,19 @@ int newPattern(int difficulty)
       int y0 = -40 + int (random(-5,5));
       for ( int i = 0;i < 4; i++)
       {
-        blocks.add(new Block(x0+int(2*i*w0),y0,int(w0),40,0));
+        blocks.add(new Block(x0+int(2*i*w0),y0,int(w0),40,xSpeed));
       }
       time = 1.5*fRate;
+      lastX = -1;//any
       break;
     case 2:// | -------|
       int w0 = 7*int(boardW/8);
       int side = int(boardW/8);
       int x0 = side*int(random(8));
       int y0 = -40 + int (random(-5,5));
-      blocks.add(new Block(x0,y0,w0,40,0));
+      blocks.add(new Block(x0,y0,w0,40,xSpeed));
       time = 1.5*fRate;
+      lastX = x0+w0;
       break;
     case 3:// |--  --  |
       int w0 = int(boardW/4);
@@ -216,11 +197,19 @@ int newPattern(int difficulty)
       int y0 = -40 + int (random(-5,5));
       for ( int i = 0;i < 2; i++)
       {
-        blocks.add(new Block(x0+int(2*i*w0),y0,int(w0),40,0));
+        blocks.add(new Block(x0+int(2*i*w0),y0,int(w0),40,xSpeed));
       }
       time = 1.5*fRate;
+      lastX = -1;
       break;
     case 4:
+      /*
+       * |---  ---|
+       * |----  --|
+       * |-----  -|
+       * |------  |
+       * | ------ |
+       */
       int w0 = int(boardW/8);
       int x0 = w0 * random(8);
       int y0 = -40 + int(random(-5,5));
@@ -229,23 +218,55 @@ int newPattern(int difficulty)
       {
         if(go_left)
         {
-          blocks.add(new Block(x0 - i*w0, y0 - 60*i,6*w0,i<4?(40-i*10):1,0) );
+          blocks.add(new Block(x0 - i*w0, y0 - 60*i,6*w0,i<4?(40-i*10):1,xSpeed) );
         }else{
-          blocks.add(new Block(x0 + i*w0, y0 - 60*i,6*w0,i<4?(40-i*10):1,0) );
+          blocks.add(new Block(x0 + i*w0, y0 - 60*i,6*w0,i<4?(40-i*10):1,xSpeed) );
         }
       }
       time = 5*fRate;
+      lastX = (x0+4*w0+6*w0) % boardW;
       break;
     case 5:
+      /*
+       * |--  --  |
+       * |  --  --|
+       * |--  --  |
+       * |  --  --|
+       */
       int w0 = int(boardW/4);
       int x0 = random(1)>0.5 ? 0 : w0;
       int y0 = -40 + int(random(-5,5));
       for ( int i = 0; i< 4; i++)
       {
-        blocks.add(new Block((x0+i*w0)%boardW, y0 - 80*i,w0,30,0) );
-        blocks.add(new Block((x0+(2+i)*w0)%boardW, y0 - 80*i,w0,30,0) );
+        blocks.add(new Block((x0+i*w0)%boardW, y0 - 100*i,w0,30,xSpeed) );
+        blocks.add(new Block((x0+(2+i)*w0)%boardW, y0 - 100*i,w0,30,xSpeed) );
       }
       time = 5*fRate;
+      lastX = - 1;
+      break;
+    case 6:
+      /*
+       * |-|--  |-|
+       * | |    | |
+       * |-|    |-|
+       * | |    | |
+       * |-|  --|-|
+       */
+      int w0 = int(boardW/8);
+      int x0 = w0*random(8);
+      int y0 = -40 + int(random(-5,5));
+      blocks.add(new Block(x0,y0,2*w0,40,xSpeed));
+      blocks.add(new Block((x0+w0*6)%boardW,y0-40*4,2*w0,40,xSpeed));
+
+      blocks.add(new Block((x0+w0*2)%boardW,y0-40*4,w0,40*5,xSpeed));
+      blocks.add(new Block((x0+w0*5)%boardW,y0-40*4,w0,40*5,xSpeed));
+
+      for ( int i = 0; i< 3; i++)
+      {
+        blocks.add(new Block((x0+w0*3)%boardW,y0-(2*i*40),2*w0,40,xSpeed));
+      }
+      time = 5*fRate;
+      lastX = x0 + w0*2;
       break;
 
   }
@@ -266,7 +287,10 @@ void setup()
   //color = 255;
   xSpeed = 0;
   block_ySpeed = 4;
+  difficulty = 0;
   blocks = new ArrayList();
+  pulse = 0.5;
+  pulseUp = true;
 }
 
 void draw()
@@ -274,14 +298,43 @@ void draw()
   if(focused)
   {
     t = t + 1
+
+      //if (pulseUp)
+      //{
+        pulse = sin(t/4)/4+0.75;
+        float half_pulse = sin(t/8)/4+0.75;
+        /*
+        pulse += (difficulty+1)/10;
+        if (pulse >= 1)
+        {
+          //pulseUp = false;
+          pulse = 0.5;
+          println("-");
+        }
+        */
+      //}
+      /*else{
+        pulse -= t/fRate + difficulty/10;
+        if (pulse <= 0.1)
+        {
+          pulseUp = true;
+          pulse = 0.1;
+        }
+      }
+      */
+
       if (t >= fRate*10)
       {
         t = 0;
-        block_ySpeed++;
+        difficulty++;
+        if(difficulty % 3 == 0)
+        {
+          block_ySpeed++;
+        }
       }
     if(tNext-- <= 0)
     {
-      tNext = newPattern(0);
+      tNext = newPattern(difficulty);
     }
     boolean moving = false;
     if(dir_left)
@@ -320,56 +373,75 @@ void draw()
         xSpeed += xAcc;
       }
     }
-    X +=xSpeed;
     if(X>400)
     {
       X = 0;
     }else if(X<0) {
       X=400;
     }
-    background(0);
-    /*
-    if(blocks.get(blocks.size()-1).check())
-    {
-      fill(color_hurt);
-      //triangle_color = color_normal;
-    }else{
-      //triangle_color = color_hurt;
-      fill(color_normal);
-    }
-    stroke(255);
-    triangle(X-20,Y+40,X,Y,X+20,Y+40);
+    background(46+60*half_pulse,0,67+30*half_pulse);
 
-    if(X>380)
-    {
-      int n = X-400;
-      triangle(n-20,Y+40,n,Y,n+20,Y+40);
-    }else if (X<20)
-    {
-      int n = X+400;
-      triangle(n-20,Y+40,n,Y,n+20,Y+40);
-    }
-    */
     boolean hurt;
-    fill(255);
-    stroke(255);
+    fill(100+55*pulse,100+55*pulse, 220+35*pulse);
+    if (pulse == 1)
+    {
+      stroke(255)
+    }else{
+      stroke(0);
+    }
+    // translate(x*(1-pulse2),y*(1-pulse2));
+    //scale(pulse2);
     ArrayList blocks_gone = new ArrayList();
     for(int i = 0; i < blocks.size(); i++){
       Block b = blocks.get(i);
-      //b.update();
-      b.y += block_ySpeed;
+      b.update();
+      b.y += block_ySpeed*pulse;
       if(b.y > boardH){
         blocks_gone.add(i);
       }else{
         b.draw();
-        hurt = hurt || b.check();
+        off = 0;
+        if (b.check()) {
+          if(debug)
+            println("Hit "+off);
+          if (off == 0){
+            hurt = true;
+          }else if(off< 0){
+            X -= off;
+            if(dir_left){
+              xSpeed = 0;
+            }
+          }else{
+            X -= off;
+            if(dir_right){
+              xSpeed = 0;
+            }
+           }
+        }
+          /*
+        switch(b.check()){
+          case 0: break; //ok
+          case 1: hurt = true;
+                  break;
+          case 2: if(dir_left) xSpeed = 0;
+                    break;
+          case 3: if(dir_right) xSpeed = 0;
+                    break;
+        }
+        */
+        //hurt = hurt || b.check();
       }
     }
+    X += xSpeed;
+    //resetMatrix();
     //remove the blocks that have left the screen
     for (int i=blocks_gone.size()-1; i>=0; i--){
       blocks.remove(blocks_gone.get(i));
     }
-    fill(hurt?color_hurt:normal);
+    //fill(hurt?color_hurt:color_normal);
+    if(hurt){
+      fill(color_hurt);
+    }
     triangle(X-20,Y+40,X,Y,X+20,Y+40);
     if(X>380)
     {
@@ -383,9 +455,11 @@ void draw()
 
     if(debug)
     {
+      fill(255);
       text(X+","+Y,300,40);
       text(xSpeed,300,60);
       text(frameRate,10,20);
+      text(pulse,300,560);
     }
   }else{
     text("Paused", 150,290);
